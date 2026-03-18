@@ -1,0 +1,587 @@
+'use client';
+import React, { useState, useEffect } from 'react';
+
+const STATUS_OPTIONS = ['Active', 'Waiting', 'Done', 'Rugged'];
+const PROJECT_TYPES  = ['L1', 'L2', 'DeFi', 'NFT', 'GameFi', 'Other'];
+const AIRDROP_LABELS = ['Retro', 'Invest', 'Yapping', 'Testnet'];
+
+const STATUS_STYLE = {
+  Active:  { bg: 'rgba(72,187,120,0.1)',  color: '#68d391', border: 'rgba(72,187,120,0.25)' },
+  Waiting: { bg: 'rgba(246,173,85,0.1)',  color: '#f6ad55', border: 'rgba(246,173,85,0.25)' },
+  Done:    { bg: 'rgba(99,179,237,0.1)',  color: '#63b3ed', border: 'rgba(99,179,237,0.25)' },
+  Rugged:  { bg: 'rgba(252,129,129,0.1)', color: '#fc8181', border: 'rgba(252,129,129,0.25)' },
+};
+
+const LABEL_STYLE = {
+  Retro:   { bg: 'rgba(252,129,129,0.1)', color: '#fc8181', border: 'rgba(252,129,129,0.2)' },
+  Invest:  { bg: 'rgba(99,179,237,0.1)',  color: '#63b3ed', border: 'rgba(99,179,237,0.2)' },
+  Yapping: { bg: 'rgba(167,139,250,0.1)', color: '#a78bfa', border: 'rgba(167,139,250,0.2)' },
+  Testnet: { bg: 'rgba(72,187,120,0.1)',  color: '#68d391', border: 'rgba(72,187,120,0.2)' },
+};
+
+const emptyEntry   = () => ({ id: Date.now() + Math.random(), date: new Date().toISOString().split('T')[0], note: '', amount: '' });
+const emptyWallet  = (n = 1) => ({ id: Date.now() + Math.random(), name: `Wallet ${n}`, address: '', walletType: '', assetSymbol: '', assetFeedId: '', assetQty: '', assetPrice: '', expenses: [], showExpenses: false, incomes: [], showIncomes: false, airdropValue: '', airdropLabels: [], status: 'Active' });
+const emptyProject = () => ({ id: Date.now(), name: '', type: 'L2', open: true, wallets: [emptyWallet(1)] });
+
+const BG     = '#080808';
+const BG2    = '#0f0f0f';
+const BG3    = '#141414';
+const BORDER = 'rgba(255,255,255,0.07)';
+const MUTED  = 'rgba(255,255,255,0.6)';
+const DIM    = 'rgba(255,255,255,0.35)';
+const AMBER  = '#f6ad55';
+const GREEN  = '#68d391';
+const RED    = '#fc8181';
+const PURPLE = '#a78bfa';
+
+function detectWalletType(address) {
+  if (!address) return '';
+  if (/^0x[0-9a-fA-F]{40}$/.test(address.trim())) return 'EVM';
+  if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address.trim())) return 'SVM';
+  return '';
+}
+
+export default function Dashboard({ onReset }) {
+  const [projects, setProjects]       = useState(() => {
+    if (typeof window === 'undefined') return [];
+    try { return JSON.parse(localStorage.getItem('rektometer_v3') || '[]'); } catch { return []; }
+  });
+  const [allFeeds, setAllFeeds]       = useState([]);
+  const [prices, setPrices]           = useState({});
+  const [searchState, setSearchState] = useState({});
+
+  useEffect(() => { localStorage.setItem('rektometer_v3', JSON.stringify(projects)); }, [projects]);
+
+  useEffect(() => {
+    fetch('https://hermes.pyth.network/v2/price_feeds?asset_type=crypto')
+      .then(r => r.json())
+      .then(data => setAllFeeds(
+        data.filter(f => f.attributes?.base && f.attributes?.quote_currency === 'USD')
+            .map(f => ({ id: f.id, symbol: f.attributes.base, display: `${f.attributes.base}/USD` }))
+            .sort((a, b) => a.symbol.localeCompare(b.symbol))
+      )).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const ids = [...new Set(projects.flatMap(p => p.wallets.map(w => w.assetFeedId).filter(Boolean)))];
+    if (!ids.length) return;
+    const refresh = () => {
+      const params = new URLSearchParams();
+      ids.forEach(id => params.append('ids[]', id));
+      fetch(`https://hermes.pyth.network/v2/updates/price/latest?${params}`)
+        .then(r => r.json())
+        .then(data => {
+          const p = {};
+          data.parsed.forEach(item => { p[item.id] = parseFloat(item.price.price) * Math.pow(10, item.price.expo); });
+          setPrices(prev => ({ ...prev, ...p }));
+        }).catch(() => {});
+    };
+    refresh();
+    const t = setInterval(refresh, 15000);
+    return () => clearInterval(t);
+  }, [projects]);
+
+  const updP = (pid, key, val) => setProjects(prev => prev.map(p => p.id === pid ? { ...p, [key]: val } : p));
+  const updW = (pid, wid, key, val) => setProjects(prev => prev.map(p => p.id !== pid ? p : { ...p, wallets: p.wallets.map(w => w.id !== wid ? w : { ...w, [key]: val }) }));
+  const updE = (pid, wid, eid, key, val, field) => setProjects(prev => prev.map(p => p.id !== pid ? p : { ...p, wallets: p.wallets.map(w => w.id !== wid ? w : { ...w, [field]: w[field].map(e => e.id !== eid ? e : { ...e, [key]: val }) }) }));
+
+  const addProject  = () => setProjects(prev => [...prev, emptyProject()]);
+  const delProject  = (pid) => { if (confirm('Delete this project?')) setProjects(prev => prev.filter(p => p.id !== pid)); };
+  const addWallet   = (pid) => setProjects(prev => prev.map(p => p.id !== pid ? p : { ...p, wallets: [...p.wallets, emptyWallet(p.wallets.length + 1)] }));
+  const delWallet   = (pid, wid) => setProjects(prev => prev.map(p => p.id !== pid ? p : { ...p, wallets: p.wallets.filter(w => w.id !== wid) }));
+  const addExpense  = (pid, wid) => setProjects(prev => prev.map(p => p.id !== pid ? p : { ...p, wallets: p.wallets.map(w => w.id !== wid ? w : { ...w, expenses: [...(w.expenses || []), emptyEntry()], showExpenses: true }) }));
+  const delExpense  = (pid, wid, eid) => setProjects(prev => prev.map(p => p.id !== pid ? p : { ...p, wallets: p.wallets.map(w => w.id !== wid ? w : { ...w, expenses: w.expenses.filter(e => e.id !== eid) }) }));
+  const addIncome   = (pid, wid) => setProjects(prev => prev.map(p => p.id !== pid ? p : { ...p, wallets: p.wallets.map(w => w.id !== wid ? w : { ...w, incomes: [...(w.incomes || []), emptyEntry()], showIncomes: true }) }));
+  const delIncome   = (pid, wid, eid) => setProjects(prev => prev.map(p => p.id !== pid ? p : { ...p, wallets: p.wallets.map(w => w.id !== wid ? w : { ...w, incomes: w.incomes.filter(e => e.id !== eid) }) }));
+
+  const toggleLabel = (pid, wid, label) => {
+    setProjects(prev => prev.map(p => p.id !== pid ? p : { ...p, wallets: p.wallets.map(w => {
+      if (w.id !== wid) return w;
+      const labels = w.airdropLabels || [];
+      return { ...w, airdropLabels: labels.includes(label) ? labels.filter(l => l !== label) : [...labels, label] };
+    })}));
+  };
+
+  const handleAddressInput = (pid, wid, address, walletIndex) => {
+    const type = detectWalletType(address);
+    setProjects(prev => prev.map(p => p.id !== pid ? p : { ...p, wallets: p.wallets.map(w => {
+      if (w.id !== wid) return w;
+      return { ...w, address, walletType: type, name: type ? `${type} Wallet ${walletIndex}` : w.name };
+    })}));
+  };
+
+  const selectFeed = async (pid, wid, feed) => {
+    updW(pid, wid, 'assetFeedId', feed.id);
+    updW(pid, wid, 'assetSymbol', feed.symbol);
+    setSearchState(prev => ({ ...prev, [wid]: { text: feed.display, show: false } }));
+    try {
+      const r = await fetch(`https://hermes.pyth.network/v2/updates/price/latest?ids[]=${feed.id}`);
+      const d = await r.json();
+      if (d.parsed?.[0]) {
+        const p = parseFloat(d.parsed[0].price.price) * Math.pow(10, d.parsed[0].price.expo);
+        setPrices(prev => ({ ...prev, [feed.id]: p }));
+      }
+    } catch {}
+  };
+
+  const fmt  = (n, d = 2) => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const fmtP = (n) => n > 1 ? fmt(n) : Number(n).toFixed(6);
+
+  const calcW = (w) => {
+    const live          = prices[w.assetFeedId] || 0;
+    const buyPrice      = parseFloat(w.assetPrice) || live;
+    const qty           = parseFloat(w.assetQty) || 0;
+    const modalCost     = qty * buyPrice;
+    const modalNow      = qty * live;
+    const unrealizedPnl = live > 0 ? modalNow - modalCost : 0;
+    const unrealizedPct = modalCost > 0 ? (unrealizedPnl / modalCost) * 100 : 0;
+    const spend         = (w.expenses || []).reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+    const income        = (w.incomes  || []).reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+    const airdrop       = parseFloat(w.airdropValue) || 0;
+    const netPnl        = airdrop + income - spend;
+    const netPct        = spend > 0 ? (netPnl / spend) * 100 : 0;
+    return { live, buyPrice, qty, modalCost, modalNow, unrealizedPnl, unrealizedPct, spend, income, airdrop, netPnl, netPct };
+  };
+
+  const calcP = (p) => {
+    const ww = p.wallets.map(calcW);
+    return {
+      totalModalNow:   ww.reduce((s, w) => s + w.modalNow, 0),
+      totalUnrealized: ww.reduce((s, w) => s + w.unrealizedPnl, 0),
+      totalSpend:      ww.reduce((s, w) => s + w.spend, 0),
+      totalIncome:     ww.reduce((s, w) => s + w.income, 0),
+      totalAirdrop:    ww.reduce((s, w) => s + w.airdrop, 0),
+      totalNetPnl:     ww.reduce((s, w) => s + w.netPnl, 0),
+    };
+  };
+
+  const grand = projects.reduce((s, p) => {
+    const c = calcP(p);
+    return {
+      modalNow:   s.modalNow   + c.totalModalNow,
+      unrealized: s.unrealized + c.totalUnrealized,
+      spend:      s.spend      + c.totalSpend,
+      income:     s.income     + c.totalIncome,
+      airdrop:    s.airdrop    + c.totalAirdrop,
+      netPnl:     s.netPnl     + c.totalNetPnl,
+    };
+  }, { modalNow: 0, unrealized: 0, spend: 0, income: 0, airdrop: 0, netPnl: 0 });
+
+  const inp = (extra = {}) => ({
+    background: 'rgba(255,255,255,0.04)',
+    border: `1px solid ${BORDER}`,
+    color: '#fff',
+    fontSize: '11px',
+    fontFamily: 'monospace',
+    padding: '5px 8px',
+    outline: 'none',
+    borderRadius: '6px',
+    ...extra,
+  });
+
+  return (
+    <div style={{ minHeight: '100vh', background: BG, color: '#fff', position: 'relative' }}>
+
+      {/* Ambient glow */}
+      <div style={{ position: 'fixed', top: 0, left: '50%', transform: 'translateX(-50%)', width: '800px', height: '300px', background: 'radial-gradient(ellipse, rgba(180,80,20,0.12) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
+
+      {/* Nav */}
+      <nav style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 28px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(8,8,8,0.8)', backdropFilter: 'blur(12px)' }}>
+        <button onClick={onReset}
+          style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+          onMouseEnter={e => e.currentTarget.style.opacity = '0.8'}
+          onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
+          <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+            <rect width="32" height="32" rx="8" fill="url(#gnav)"/>
+            <path d="M8 22 L8 10 L14 10 Q18 10 18 14 Q18 17 15 17.5 L19 22 L16 22 L12.5 17.8 L11 17.8 L11 22 Z" fill="white" opacity="0.95"/>
+            <path d="M11 10.5 L11 15.5 L14 15.5 Q16.5 15.5 16.5 13 Q16.5 10.5 14 10.5 Z" fill="white" opacity="0.95"/>
+            <path d="M20 18 L23 22 L26 18" stroke="#f6ad55" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <circle cx="23" cy="15" r="2" fill="#f6ad55"/>
+            <defs>
+              <linearGradient id="gnav" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor="#c05621"/><stop offset="100%" stopColor="#7b341e"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <span style={{ fontWeight: 800, fontSize: '15px', color: '#fff', letterSpacing: '0.02em' }}>
+            Rekto<span style={{ color: AMBER }}>Meter</span>
+          </span>
+        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontFamily: 'monospace', color: GREEN, letterSpacing: '0.05em' }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: GREEN, display: 'inline-block' }}></span>
+            Pyth live
+          </div>
+          <button onClick={onReset} style={{ fontSize: '11px', fontFamily: 'monospace', color: MUTED, background: 'rgba(255,255,255,0.05)', border: `1px solid ${BORDER}`, padding: '5px 14px', borderRadius: '7px', cursor: 'pointer' }}>
+            Reset
+          </button>
+        </div>
+      </nav>
+
+      <div style={{ position: 'relative', zIndex: 1, padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+        {/* Summary cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+          {[
+            { label: 'Holdings',  val: '$' + fmt(grand.modalNow),   sub: (grand.unrealized >= 0 ? '+' : '-') + '$' + fmt(Math.abs(grand.unrealized)) + ' unrealized', accent: grand.unrealized >= 0 ? GREEN : RED },
+            { label: 'Expenses',  val: '-$' + fmt(grand.spend),     sub: 'Gas · fees · swaps',        accent: RED },
+            { label: 'Income',    val: '+$' + fmt(grand.income),    sub: 'Trades · WL · sales',       accent: GREEN },
+            { label: 'Net P&L',   val: (grand.netPnl >= 0 ? '+' : '-') + '$' + fmt(Math.abs(grand.netPnl)), sub: 'Airdrop + income − expenses', accent: grand.netPnl >= 0 ? GREEN : RED },
+          ].map(s => (
+            <div key={s.label} style={{ background: BG2, border: `1px solid ${BORDER}`, borderRadius: '12px', padding: '18px 20px', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: s.accent, opacity: 0.5, borderRadius: '12px 12px 0 0' }} />
+              <div style={{ fontSize: '10px', fontFamily: 'monospace', color: MUTED, letterSpacing: '0.1em', textTransform: 'uppercase' }}>{s.label}</div>
+              <div style={{ fontSize: '22px', fontWeight: 800, marginTop: '6px', color: s.accent, fontFamily: 'monospace', letterSpacing: '-0.01em' }}>{s.val}</div>
+              <div style={{ fontSize: '10px', fontFamily: 'monospace', color: DIM, marginTop: '4px' }}>{s.sub}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Empty state */}
+        {projects.length === 0 && (
+          <div style={{ background: BG2, border: `1px dashed rgba(255,255,255,0.08)`, borderRadius: '12px', padding: '64px 24px', textAlign: 'center' }}>
+            <div style={{ fontSize: '32px', marginBottom: '12px' }}>📋</div>
+            <div style={{ fontSize: '14px', color: MUTED, fontWeight: 600 }}>No projects yet</div>
+            <div style={{ fontSize: '12px', color: DIM, marginTop: '4px', fontFamily: 'monospace' }}>Click "+ Add Project" below to start your airdrop journal</div>
+          </div>
+        )}
+
+        {/* Projects */}
+        {projects.map(proj => {
+          const pc = calcP(proj);
+          return (
+            <div key={proj.id} style={{ background: BG2, border: `1px solid ${BORDER}`, borderRadius: '12px', overflow: 'hidden' }}>
+
+              {/* Project header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 18px', borderBottom: proj.open ? `1px solid ${BORDER}` : 'none', cursor: 'pointer', background: BG3 }}
+                onClick={() => updP(proj.id, 'open', !proj.open)}>
+                <span style={{ fontSize: '10px', color: DIM, fontFamily: 'monospace' }}>{proj.open ? '▼' : '▶'}</span>
+                <input value={proj.name}
+                  onChange={e => { e.stopPropagation(); updP(proj.id, 'name', e.target.value); }}
+                  onClick={e => e.stopPropagation()}
+                  placeholder="Project name..."
+                  style={{ background: 'none', border: 'none', outline: 'none', fontWeight: 700, fontSize: '14px', color: '#fff', width: '180px', letterSpacing: '0.01em' }} />
+                <select value={proj.type}
+                  onChange={e => { e.stopPropagation(); updP(proj.id, 'type', e.target.value); }}
+                  onClick={e => e.stopPropagation()}
+                  style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${BORDER}`, color: MUTED, fontSize: '10px', fontFamily: 'monospace', padding: '4px 10px', outline: 'none', borderRadius: '6px' }}>
+                  {PROJECT_TYPES.map(t => <option key={t} style={{ background: '#1a1a1a' }}>{t}</option>)}
+                </select>
+                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '20px', fontSize: '11px', fontFamily: 'monospace' }}>
+                  <span style={{ color: DIM }}>Holdings <span style={{ color: pc.totalUnrealized >= 0 ? GREEN : RED }}>${fmt(pc.totalModalNow)}</span></span>
+                  <span style={{ color: DIM }}>Expenses <span style={{ color: RED }}>-${fmt(pc.totalSpend)}</span></span>
+                  <span style={{ color: DIM }}>Income <span style={{ color: GREEN }}>+${fmt(pc.totalIncome)}</span></span>
+                  <span style={{ color: DIM }}>Net P&L <span style={{ color: pc.totalNetPnl >= 0 ? GREEN : RED, fontWeight: 700 }}>{pc.totalNetPnl >= 0 ? '+' : '-'}${fmt(Math.abs(pc.totalNetPnl))}</span></span>
+                  <button onClick={e => { e.stopPropagation(); delProject(proj.id); }}
+                    style={{ background: 'none', border: 'none', color: DIM, cursor: 'pointer', fontSize: '14px', padding: '0 4px', lineHeight: 1 }}
+                    onMouseEnter={e => e.target.style.color = RED}
+                    onMouseLeave={e => e.target.style.color = DIM}>✕</button>
+                </div>
+              </div>
+
+              {/* Wallet table */}
+              {proj.open && (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
+                        {['Wallet', 'Holdings', 'Expenses', 'Income', 'Airdrop', 'Labels', 'P&L', 'Status', ''].map(h => (
+                          <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: '9px', fontFamily: 'monospace', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 500, whiteSpace: 'nowrap' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {proj.wallets.map((w, wIndex) => {
+                        const wc       = calcW(w);
+                        const ss       = searchState[w.id] || { text: w.assetSymbol ? `${w.assetSymbol}/USD` : '', show: false };
+                        const filtered = allFeeds.filter(f => f.symbol.toLowerCase().includes((ss.text || '').toLowerCase().replace('/usd', ''))).slice(0, 15);
+                        const expenses = w.expenses || [];
+                        const incomes  = w.incomes  || [];
+                        const labels   = w.airdropLabels || [];
+                        const st       = STATUS_STYLE[w.status] || STATUS_STYLE.Active;
+
+                        return (
+                          <React.Fragment key={w.id}>
+                            <tr style={{ borderBottom: `1px solid rgba(255,255,255,0.04)`, verticalAlign: 'top' }}
+                              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+
+                              {/* Wallet name + address */}
+                              <td style={{ padding: '14px', minWidth: '180px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                  <input value={w.name || ''} onChange={e => updW(proj.id, w.id, 'name', e.target.value)}
+                                    style={{ background: 'none', border: 'none', outline: 'none', fontSize: '12px', fontFamily: 'monospace', color: '#fff', width: '140px', fontWeight: 600 }} />
+                                  <input
+                                    value={w.address || ''}
+                                    onChange={e => handleAddressInput(proj.id, w.id, e.target.value, wIndex + 1)}
+                                    placeholder="Paste wallet address..."
+                                    style={{
+                                      ...inp({ width: '155px' }),
+                                      fontSize: '10px',
+                                      color: w.walletType === 'EVM' ? '#63b3ed' : w.walletType === 'SVM' ? '#a78bfa' : DIM,
+                                    }} />
+                                  {w.walletType && (
+                                    <div style={{
+                                      display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                      fontSize: '9px', fontFamily: 'monospace', fontWeight: 700,
+                                      letterSpacing: '0.1em', padding: '2px 8px', borderRadius: '4px',
+                                      background: w.walletType === 'EVM' ? 'rgba(99,179,237,0.1)' : 'rgba(167,139,250,0.1)',
+                                      border: `1px solid ${w.walletType === 'EVM' ? 'rgba(99,179,237,0.3)' : 'rgba(167,139,250,0.3)'}`,
+                                      color: w.walletType === 'EVM' ? '#63b3ed' : '#a78bfa',
+                                      width: 'fit-content',
+                                    }}>
+                                      <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'currentColor', display: 'inline-block' }}></span>
+                                      {w.walletType}
+                                    </div>
+                                  )}
+                                  {w.address && w.walletType && (
+                                    <div style={{ fontSize: '9px', fontFamily: 'monospace', color: DIM }}>
+                                      {w.address.slice(0, 6)}...{w.address.slice(-4)}
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* Holdings */}
+                              <td style={{ padding: '14px', minWidth: '160px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                  <div style={{ position: 'relative' }}>
+                                    <input type="text" value={ss.text || ''}
+                                      onChange={e => setSearchState(prev => ({ ...prev, [w.id]: { text: e.target.value, show: true } }))}
+                                      onFocus={() => setSearchState(prev => ({ ...prev, [w.id]: { ...ss, show: true } }))}
+                                      placeholder="Search asset..."
+                                      style={inp({ width: '140px' })} />
+                                    {ss.show && (ss.text || '').length > 0 && filtered.length > 0 && (
+                                      <div style={{ position: 'absolute', zIndex: 20, width: '180px', background: '#1a1a1a', border: `1px solid ${BORDER}`, borderRadius: '8px', maxHeight: '160px', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.4)', marginTop: '2px' }}>
+                                        {filtered.map(f => (
+                                          <button key={f.id} onClick={() => selectFeed(proj.id, w.id, f)}
+                                            style={{ width: '100%', textAlign: 'left', padding: '7px 12px', fontSize: '11px', fontFamily: 'monospace', color: MUTED, background: 'none', border: 'none', cursor: 'pointer', borderBottom: `1px solid rgba(255,255,255,0.04)` }}
+                                            onMouseEnter={e => { e.target.style.background = 'rgba(246,173,85,0.08)'; e.target.style.color = AMBER; }}
+                                            onMouseLeave={e => { e.target.style.background = 'none'; e.target.style.color = MUTED; }}>
+                                            {f.display}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <input type="number" value={w.assetQty || ''} onChange={e => updW(proj.id, w.id, 'assetQty', e.target.value)}
+                                    placeholder="Qty" style={inp({ width: '140px' })} />
+                                  <input type="number" value={w.assetPrice || ''} onChange={e => updW(proj.id, w.id, 'assetPrice', e.target.value)}
+                                    placeholder={wc.live > 0 ? `Live $${fmtP(wc.live)}` : 'Buy price'}
+                                    style={inp({ width: '140px' })} />
+                                  {wc.live > 0 && (
+                                    <div style={{ fontSize: '10px', fontFamily: 'monospace', color: GREEN }}>
+                                      Live ${fmtP(wc.live)}
+                                    </div>
+                                  )}
+                                  {wc.modalCost > 0 && (
+                                    <div style={{ fontSize: '10px', fontFamily: 'monospace', color: wc.unrealizedPnl >= 0 ? GREEN : RED }}>
+                                      {wc.unrealizedPnl >= 0 ? '+' : '-'}${fmt(Math.abs(wc.unrealizedPnl))} ({wc.unrealizedPct >= 0 ? '+' : ''}{fmt(wc.unrealizedPct)}%)
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* Expenses */}
+                              <td style={{ padding: '14px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                  <div style={{ fontSize: '14px', fontFamily: 'monospace', color: RED, fontWeight: 700 }}>
+                                    {wc.spend > 0 ? '-$' + fmt(wc.spend) : '—'}
+                                  </div>
+                                  <button onClick={() => addExpense(proj.id, w.id)}
+                                    style={{ fontSize: '10px', fontFamily: 'monospace', color: DIM, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}
+                                    onMouseEnter={e => e.target.style.color = RED}
+                                    onMouseLeave={e => e.target.style.color = DIM}>+ Add expense</button>
+                                  {expenses.length > 0 && (
+                                    <button onClick={() => updW(proj.id, w.id, 'showExpenses', !w.showExpenses)}
+                                      style={{ fontSize: '10px', fontFamily: 'monospace', color: DIM, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}>
+                                      {w.showExpenses ? '▲ hide' : `▼ ${expenses.length} item${expenses.length > 1 ? 's' : ''}`}
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* Income */}
+                              <td style={{ padding: '14px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                  <div style={{ fontSize: '14px', fontFamily: 'monospace', color: GREEN, fontWeight: 700 }}>
+                                    {wc.income > 0 ? '+$' + fmt(wc.income) : '—'}
+                                  </div>
+                                  <button onClick={() => addIncome(proj.id, w.id)}
+                                    style={{ fontSize: '10px', fontFamily: 'monospace', color: DIM, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}
+                                    onMouseEnter={e => e.target.style.color = GREEN}
+                                    onMouseLeave={e => e.target.style.color = DIM}>+ Add income</button>
+                                  {incomes.length > 0 && (
+                                    <button onClick={() => updW(proj.id, w.id, 'showIncomes', !w.showIncomes)}
+                                      style={{ fontSize: '10px', fontFamily: 'monospace', color: DIM, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}>
+                                      {w.showIncomes ? '▲ hide' : `▼ ${incomes.length} item${incomes.length > 1 ? 's' : ''}`}
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* Airdrop */}
+                              <td style={{ padding: '14px' }}>
+                                <input type="number" value={w.airdropValue || ''} onChange={e => updW(proj.id, w.id, 'airdropValue', e.target.value)}
+                                  placeholder="0"
+                                  style={inp({ width: '100px', color: PURPLE })} />
+                              </td>
+
+                              {/* Labels */}
+                              <td style={{ padding: '14px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  {AIRDROP_LABELS.map(label => {
+                                    const ls = LABEL_STYLE[label];
+                                    const active = labels.includes(label);
+                                    return (
+                                      <button key={label} onClick={() => toggleLabel(proj.id, w.id, label)}
+                                        style={{
+                                          fontSize: '10px', fontFamily: 'monospace', padding: '3px 10px',
+                                          border: `1px solid ${active ? ls.border : BORDER}`,
+                                          background: active ? ls.bg : 'transparent',
+                                          color: active ? ls.color : DIM,
+                                          cursor: 'pointer', textAlign: 'left',
+                                          borderRadius: '5px', transition: 'all 0.15s',
+                                        }}>
+                                        {label}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </td>
+
+                              {/* P&L */}
+                              <td style={{ padding: '14px', minWidth: '120px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '11px', fontFamily: 'monospace' }}>
+                                  {wc.modalCost > 0 && (
+                                    <div>
+                                      <div style={{ color: DIM, fontSize: '9px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Unrealized</div>
+                                      <div style={{ color: wc.unrealizedPnl >= 0 ? GREEN : RED }}>
+                                        {wc.unrealizedPnl >= 0 ? '+' : '-'}${fmt(Math.abs(wc.unrealizedPnl))}
+                                      </div>
+                                    </div>
+                                  )}
+                                  {wc.spend > 0 && (
+                                    <div>
+                                      <div style={{ color: DIM, fontSize: '9px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Expenses</div>
+                                      <div style={{ color: RED }}>-${fmt(wc.spend)}</div>
+                                    </div>
+                                  )}
+                                  {wc.income > 0 && (
+                                    <div>
+                                      <div style={{ color: DIM, fontSize: '9px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Income</div>
+                                      <div style={{ color: GREEN }}>+${fmt(wc.income)}</div>
+                                    </div>
+                                  )}
+                                  {wc.airdrop > 0 && (
+                                    <div>
+                                      <div style={{ color: DIM, fontSize: '9px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Airdrop</div>
+                                      <div style={{ color: PURPLE }}>+${fmt(wc.airdrop)}</div>
+                                    </div>
+                                  )}
+                                  {(wc.spend > 0 || wc.income > 0 || wc.airdrop > 0) && (
+                                    <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: '6px', marginTop: '2px' }}>
+                                      <div style={{ color: DIM, fontSize: '9px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Net</div>
+                                      <div style={{ color: wc.netPnl >= 0 ? GREEN : RED, fontWeight: 700, fontSize: '14px' }}>
+                                        {wc.netPnl >= 0 ? '+' : '-'}${fmt(Math.abs(wc.netPnl))}
+                                      </div>
+                                    </div>
+                                  )}
+                                  {wc.spend === 0 && wc.income === 0 && wc.airdrop === 0 && wc.modalCost === 0 && (
+                                    <span style={{ color: DIM }}>—</span>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* Status */}
+                              <td style={{ padding: '14px' }}>
+                                <select value={w.status || 'Active'} onChange={e => updW(proj.id, w.id, 'status', e.target.value)}
+                                  style={{ fontSize: '10px', fontFamily: 'monospace', padding: '4px 10px', border: `1px solid ${st.border}`, background: st.bg, color: st.color, outline: 'none', cursor: 'pointer', borderRadius: '6px' }}>
+                                  {STATUS_OPTIONS.map(s => <option key={s} style={{ background: '#1a1a1a', color: '#fff' }}>{s}</option>)}
+                                </select>
+                              </td>
+
+                              {/* Delete */}
+                              <td style={{ padding: '14px' }}>
+                                <button onClick={() => delWallet(proj.id, w.id)}
+                                  style={{ background: 'none', border: 'none', color: DIM, cursor: 'pointer', fontSize: '14px' }}
+                                  onMouseEnter={e => e.target.style.color = RED}
+                                  onMouseLeave={e => e.target.style.color = DIM}>✕</button>
+                              </td>
+                            </tr>
+
+                            {/* Expense rows */}
+                            {w.showExpenses && expenses.map(exp => (
+                              <tr key={exp.id} style={{ background: 'rgba(252,129,129,0.03)', borderBottom: `1px solid rgba(255,255,255,0.03)` }}>
+                                <td colSpan={9} style={{ padding: '6px 14px 6px 200px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ fontSize: '10px', fontFamily: 'monospace', color: RED }}>↳</span>
+                                    <input type="date" value={exp.date || ''} onChange={e => updE(proj.id, w.id, exp.id, 'date', e.target.value, 'expenses')}
+                                      style={inp({ width: '130px' })} />
+                                    <input type="text" value={exp.note || ''} onChange={e => updE(proj.id, w.id, exp.id, 'note', e.target.value, 'expenses')}
+                                      placeholder="e.g. gas fee bridge"
+                                      style={inp({ width: '220px' })} />
+                                    <input type="number" value={exp.amount || ''} onChange={e => updE(proj.id, w.id, exp.id, 'amount', e.target.value, 'expenses')}
+                                      placeholder="0.00" style={inp({ width: '90px', color: RED })} />
+                                    <button onClick={() => delExpense(proj.id, w.id, exp.id)}
+                                      style={{ background: 'none', border: 'none', color: DIM, cursor: 'pointer', fontSize: '12px' }}
+                                      onMouseEnter={e => e.target.style.color = RED}
+                                      onMouseLeave={e => e.target.style.color = DIM}>✕</button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+
+                            {/* Income rows */}
+                            {w.showIncomes && incomes.map(inc => (
+                              <tr key={inc.id} style={{ background: 'rgba(72,187,120,0.03)', borderBottom: `1px solid rgba(255,255,255,0.03)` }}>
+                                <td colSpan={9} style={{ padding: '6px 14px 6px 360px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ fontSize: '10px', fontFamily: 'monospace', color: GREEN }}>↳</span>
+                                    <input type="date" value={inc.date || ''} onChange={e => updE(proj.id, w.id, inc.id, 'date', e.target.value, 'incomes')}
+                                      style={inp({ width: '130px' })} />
+                                    <input type="text" value={inc.note || ''} onChange={e => updE(proj.id, w.id, inc.id, 'note', e.target.value, 'incomes')}
+                                      placeholder="e.g. profit trade ETH"
+                                      style={inp({ width: '220px' })} />
+                                    <input type="number" value={inc.amount || ''} onChange={e => updE(proj.id, w.id, inc.id, 'amount', e.target.value, 'incomes')}
+                                      placeholder="0.00" style={inp({ width: '90px', color: GREEN })} />
+                                    <button onClick={() => delIncome(proj.id, w.id, inc.id)}
+                                      style={{ background: 'none', border: 'none', color: DIM, cursor: 'pointer', fontSize: '12px' }}
+                                      onMouseEnter={e => e.target.style.color = RED}
+                                      onMouseLeave={e => e.target.style.color = DIM}>✕</button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </React.Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+
+                  <div style={{ padding: '10px 18px', borderTop: `1px solid ${BORDER}` }}>
+                    <button onClick={() => addWallet(proj.id)}
+                      style={{ fontSize: '11px', fontFamily: 'monospace', color: DIM, background: 'none', border: 'none', cursor: 'pointer', letterSpacing: '0.05em' }}
+                      onMouseEnter={e => e.target.style.color = AMBER}
+                      onMouseLeave={e => e.target.style.color = DIM}>
+                      + Add wallet
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Add project */}
+        <button onClick={addProject}
+          style={{ border: `1px dashed rgba(255,255,255,0.08)`, padding: '16px', fontSize: '11px', fontFamily: 'monospace', color: DIM, background: 'none', cursor: 'pointer', letterSpacing: '0.1em', textTransform: 'uppercase', borderRadius: '12px', transition: 'all 0.2s' }}
+          onMouseEnter={e => { e.target.style.borderColor = AMBER; e.target.style.color = AMBER; }}
+          onMouseLeave={e => { e.target.style.borderColor = 'rgba(255,255,255,0.08)'; e.target.style.color = DIM; }}>
+          + Add Project
+        </button>
+
+      </div>
+    </div>
+  );
+}
