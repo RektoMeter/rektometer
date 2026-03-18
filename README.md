@@ -1,36 +1,171 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# RektoMeter 📊
 
-## Getting Started
+> Your airdrop journal — powered by Pyth Price Feeds
 
-First, run the development server:
+RektoMeter is a smart airdrop portfolio tracker built for crypto airdrop hunters who want to know their **real P&L** — not just what they earned, but what they actually spent to get there.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Built for the **Pyth Community Hackathon 2026** — targeting the **Best Educational Content** prize category.
+
+---
+
+## 🔴 Live Demo
+
+👉 [rektometer.vercel.app](https://rektometer.vercel.app) *(coming soon)*
+
+---
+
+## 🧠 The Problem
+
+Most airdrop hunters know what they earned — but not what they spent.
+
+Gas fees, bridge costs, and swap fees quietly eat into profits. Without tracking, a $2,800 airdrop *feels* like pure profit — but the reality might be $2,755 after $45 in operational costs.
+
+**RektoMeter fixes this.**
+
+---
+
+## ✨ Features
+
+### 📁 Multi-Project Tracking
+- Create a project for each airdrop you're farming
+- Categorize by type: L1, L2, DeFi, NFT, GameFi, Other
+- Collapse/expand projects for a clean overview
+
+### 👛 Multi-Wallet Support
+- Add unlimited wallets per project
+- Paste your wallet address — RektoMeter **auto-detects EVM vs SVM**
+  - EVM: starts with `0x...`
+  - SVM: Solana-style base58 address
+- Track performance independently per wallet
+
+### 📈 Live Holdings via Pyth Price Feeds
+- Search from **500+ crypto assets** powered by Pyth Network
+- Enter your quantity and buy price
+- **Unrealized P&L updates in real-time** using Pyth Hermes API
+- Prices refresh every 15 seconds — institutional grade data
+
+### 💸 Expense Logging
+- Log every gas fee, bridge cost, and swap fee
+- Add date + note for each entry
+- All expenses are totaled automatically
+
+### 💰 Income Tracking
+- Record profits from trading, WL sales, or any other gains
+- Date + note per entry
+
+### 🪂 Airdrop Value Input
+- Once you receive and sell your airdrop, input the USD value
+- Net P&L = Airdrop + Income − Expenses
+
+### 🏷️ Strategy Labels (Multi-select)
+| Label | Description |
+|-------|-------------|
+| **Retro** | Retroactive farming — no guaranteed reward |
+| **Invest** | Capital deployed — has unrealized value |
+| **Yapping** | Discord roles, social tasks — zero capital |
+| **Testnet** | Testnet activity — minimal cost |
+
+### 📊 P&L Breakdown Per Wallet
+Each wallet shows a full breakdown:
+- Unrealized P&L (from live Pyth prices)
+- Expenses total
+- Income total
+- Airdrop value
+- **Net P&L**
+
+### 💾 Persistent Storage
+- All data saved to `localStorage` — no account needed
+- Data persists across sessions
+
+---
+
+## 🔧 How Pyth Is Used
+
+RektoMeter integrates **Pyth Network Price Feeds** via the [Hermes REST API](https://hermes.pyth.network):
+
+```
+GET https://hermes.pyth.network/v2/updates/price/latest?ids[]=<feed_id>
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+**Two endpoints used:**
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+| Endpoint | Purpose |
+|----------|---------|
+| `/v2/price_feeds?asset_type=crypto` | Fetch all available crypto feeds (500+) |
+| `/v2/updates/price/latest` | Get real-time prices for portfolio assets |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**Price calculation:**
+```js
+price = parseFloat(data.price) * Math.pow(10, data.expo)
+```
 
-## Learn More
+Prices update every **15 seconds** to keep unrealized P&L accurate.
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🛠️ Tech Stack
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Layer | Technology |
+|-------|------------|
+| Framework | Next.js 16 (App Router) |
+| Styling | Tailwind CSS + inline styles |
+| Data | Pyth Network Hermes API |
+| Storage | localStorage |
+| Deploy | Vercel |
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🚀 Getting Started
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+# Clone the repo
+git clone https://github.com/RektoMeter/rektometer.git
+cd rektometer
+
+# Install dependencies
+npm install
+
+# Run locally
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+---
+
+## 📖 Guide
+
+New to RektoMeter? Check out the built-in **Guide** page (click "Learn More" on the landing page) which covers:
+
+- The real ROI formula for airdrop hunting
+- Step-by-step walkthrough of every feature
+- How to classify your airdrop strategy using labels
+- How Pyth Price Feeds power the live data
+
+---
+
+## 👥 Team
+
+| Name | Role | GitHub |
+|------|------|--------|
+| Balya Aulia Assiddiqi | Product & Frontend | [@stircrazy](https://github.com/stircrazy) |
+| Rani | Design & Content | [@Ranimth07](https://github.com/Ranimth07) |
+
+---
+
+## 📄 License
+
+Licensed under the [Apache License 2.0](./LICENSE).
+
+---
+
+## 🔗 Links
+
+- 🌐 Live App: [rektometer.vercel.app](https://rektometer.vercel.app)
+- 📝 Dev.to Article: *(coming soon)*
+- 🐦 Twitter: *(coming soon)*
+- 🏆 Hackathon: [Pyth Community Hackathon 2026](https://dev-forum.pyth.network/c/pyth-hackathon/14)
+
+---
+
+*Built with ❤️ for the Pyth Community Hackathon 2026*
