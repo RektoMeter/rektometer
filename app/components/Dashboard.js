@@ -90,9 +90,11 @@ export default function Dashboard({ onReset }) {
   const [tourStep, setTourStep]             = useState(0);
   const isMobile = useIsMobile();
 
-  const handleTourNext = () => {
-    if (tourStep === TOUR_STEPS.length - 1) { localStorage.setItem('rektometer_tour_done', 'true'); setShowTour(false); }
-    else setTourStep(s => s + 1);
+  const handleTourNext = (dir = 1) => {
+    const next = tourStep + dir;
+    if (next >= TOUR_STEPS.length) { localStorage.setItem('rektometer_tour_done', 'true'); setShowTour(false); }
+    else if (next < 0) setTourStep(0);
+    else setTourStep(next);
   };
   const handleTourSkip = () => { localStorage.setItem('rektometer_tour_done', 'true'); setShowTour(false); };
 
