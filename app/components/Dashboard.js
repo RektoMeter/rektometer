@@ -90,11 +90,7 @@ export default function Dashboard({ onReset }) {
   const [tourStep, setTourStep]             = useState(0);
   const isMobile = useIsMobile();
 
-  const handleTourNext = () => {
-    if (tourStep === TOUR_STEPS.length - 1) { localStorage.setItem('rektometer_tour_done', 'true'); setShowTour(false); }
-    else setTourStep(s => s + 1);
-  };
-  const handleTourBack = () => setTourStep(s => Math.max(0, s - 1));
+  const closeTour = () => { localStorage.setItem('rektometer_tour_done', 'true'); setShowTour(false); };
 
   useEffect(() => { localStorage.setItem('rektometer_v3', JSON.stringify(projects)); }, [projects]);
 
@@ -121,9 +117,9 @@ export default function Dashboard({ onReset }) {
   const updW = (pid, wid, key, val) => setProjects(prev => prev.map(p => p.id !== pid ? p : { ...p, wallets: p.wallets.map(w => w.id !== wid ? w : { ...w, [key]: val }) }));
   const updE = (pid, wid, eid, key, val, field) => setProjects(prev => prev.map(p => p.id !== pid ? p : { ...p, wallets: p.wallets.map(w => w.id !== wid ? w : { ...w, [field]: w[field].map(e => e.id !== eid ? e : { ...e, [key]: val }) }) }));
   const addProject = () => setProjects(prev => [...prev, emptyProject()]);
-  const delProject = (pid) => { if (confirm('Delete this project?')) setProjects(prev => prev.filter(p => p.id !== pid)); };
+  const delProject = (pid) => { if (window.confirm('Delete this project?')) setProjects(prev => prev.filter(p => p.id !== pid)); };
   const addWallet  = (pid) => setProjects(prev => prev.map(p => p.id !== pid ? p : { ...p, wallets: [...p.wallets, emptyWallet(p.wallets.length + 1)] }));
-  const delWallet  = (pid, wid) => setProjects(prev => prev.map(p => p.id !== pid ? p : { ...p, wallets: p.wallets.filter(w => w.id !== wid) }));
+  const delWallet  = (pid, wid) => { if (window.confirm('Delete this wallet?')) setProjects(prev => prev.map(p => p.id !== pid ? p : { ...p, wallets: p.wallets.filter(w => w.id !== wid) })); };
   const addExpense = (pid, wid) => setProjects(prev => prev.map(p => p.id !== pid ? p : { ...p, wallets: p.wallets.map(w => w.id !== wid ? w : { ...w, expenses: [...(w.expenses || []), emptyEntry()], showExpenses: true }) }));
   const delExpense = (pid, wid, eid) => setProjects(prev => prev.map(p => p.id !== pid ? p : { ...p, wallets: p.wallets.map(w => w.id !== wid ? w : { ...w, expenses: w.expenses.filter(e => e.id !== eid) }) }));
   const addIncome  = (pid, wid) => setProjects(prev => prev.map(p => p.id !== pid ? p : { ...p, wallets: p.wallets.map(w => w.id !== wid ? w : { ...w, incomes: [...(w.incomes || []), emptyEntry()], showIncomes: true }) }));
@@ -184,18 +180,19 @@ export default function Dashboard({ onReset }) {
     const incomes  = w.incomes  || [];
     const labels   = w.airdropLabels || [];
     const st       = STATUS_STYLE[w.status] || STATUS_STYLE.Active;
-    const [localSearch, setLocalSearch]     = useState(w.assetSymbol ? `${w.assetSymbol}/USD` : '');
-    const [showDrop, setShowDrop]           = useState(false);
-    const [localQty, setLocalQty]           = useState(w.assetQty || '');
-    const [localPrice, setLocalPrice]       = useState(w.assetPrice || '');
-    const [localAirdrop, setLocalAirdrop]   = useState(w.airdropValue || '');
-    const [localName, setLocalName]         = useState(w.name || '');
-    const [localAddr, setLocalAddr]         = useState(w.address || '');
+    const [localSearch, setLocalSearch]   = useState(w.assetSymbol ? `${w.assetSymbol}/USD` : '');
+    const [showDrop, setShowDrop]         = useState(false);
+    const [localQty, setLocalQty]         = useState(w.assetQty || '');
+    const [localPrice, setLocalPrice]     = useState(w.assetPrice || '');
+    const [localAirdrop, setLocalAirdrop] = useState(w.airdropValue || '');
+    const [localName, setLocalName]       = useState(w.name || '');
+    const [localAddr, setLocalAddr]       = useState(w.address || '');
     const filtered = allFeeds.filter(f => f.symbol.toLowerCase().includes(localSearch.toLowerCase().replace('/usd', ''))).slice(0, 15);
 
     return (
       <div style={{ background: BG3, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'visible', marginBottom: '8px' }}>
-        <div style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }} onClick={() => setExpandedWallet(isExpanded ? null : w.id)}>
+        <div style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+          onClick={() => setExpandedWallet(isExpanded ? null : w.id)}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '13px', fontFamily: 'monospace', color: '#fff', fontWeight: 600 }}>{w.name || `Wallet ${wIndex + 1}`}</span>
@@ -256,7 +253,7 @@ export default function Dashboard({ onReset }) {
                 <div style={{ fontSize: '12px', fontFamily: 'monospace', color: RED, fontWeight: 600 }}>{wc.spend > 0 ? '-$' + fmt(wc.spend) : '$0'}</div>
               </div>
               {expenses.map(exp => <ExpenseRow key={exp.id} exp={exp} pid={proj.id} wid={w.id} field="expenses" color={RED} onUpdate={updE} onDelete={delExpense} inp={inp} />)}
-              <button onClick={() => addExpense(proj.id, w.id)} data-tour="add-expense" style={{ fontSize: '12px', fontFamily: 'monospace', color: RED, background: 'rgba(252,129,129,0.05)', border: `1px dashed rgba(252,129,129,0.25)`, padding: '8px', borderRadius: '6px', cursor: 'pointer', textAlign: 'center' }}>+ Add expense</button>
+              <button onClick={e => { e.stopPropagation(); addExpense(proj.id, w.id); }} data-tour="add-expense" style={{ fontSize: '12px', fontFamily: 'monospace', color: RED, background: 'rgba(252,129,129,0.05)', border: `1px dashed rgba(252,129,129,0.25)`, padding: '8px', borderRadius: '6px', cursor: 'pointer', textAlign: 'center' }}>+ Add expense</button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -265,7 +262,7 @@ export default function Dashboard({ onReset }) {
                 <div style={{ fontSize: '12px', fontFamily: 'monospace', color: GREEN, fontWeight: 600 }}>{wc.income > 0 ? '+$' + fmt(wc.income) : '$0'}</div>
               </div>
               {incomes.map(inc => <ExpenseRow key={inc.id} exp={inc} pid={proj.id} wid={w.id} field="incomes" color={GREEN} onUpdate={updE} onDelete={delIncome} inp={inp} />)}
-              <button onClick={() => addIncome(proj.id, w.id)} style={{ fontSize: '12px', fontFamily: 'monospace', color: GREEN, background: 'rgba(72,187,120,0.05)', border: `1px dashed rgba(72,187,120,0.25)`, padding: '8px', borderRadius: '6px', cursor: 'pointer', textAlign: 'center' }}>+ Add income</button>
+              <button onClick={e => { e.stopPropagation(); addIncome(proj.id, w.id); }} style={{ fontSize: '12px', fontFamily: 'monospace', color: GREEN, background: 'rgba(72,187,120,0.05)', border: `1px dashed rgba(72,187,120,0.25)`, padding: '8px', borderRadius: '6px', cursor: 'pointer', textAlign: 'center' }}>+ Add income</button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -276,15 +273,15 @@ export default function Dashboard({ onReset }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <div style={{ fontSize: '10px', fontFamily: 'monospace', color: DIM, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Labels</div>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                {AIRDROP_LABELS.map(label => { const ls = LABEL_STYLE[label]; const active = labels.includes(label); return <button key={label} onClick={() => toggleLabel(proj.id, w.id, label)} style={{ fontSize: '12px', fontFamily: 'monospace', padding: '5px 14px', border: `1px solid ${active ? ls.border : BORDER}`, background: active ? ls.bg : 'transparent', color: active ? ls.color : DIM, cursor: 'pointer', borderRadius: '5px' }}>{label}</button>; })}
+                {AIRDROP_LABELS.map(label => { const ls = LABEL_STYLE[label]; const active = labels.includes(label); return <button key={label} onClick={e => { e.stopPropagation(); toggleLabel(proj.id, w.id, label); }} style={{ fontSize: '12px', fontFamily: 'monospace', padding: '5px 14px', border: `1px solid ${active ? ls.border : BORDER}`, background: active ? ls.bg : 'transparent', color: active ? ls.color : DIM, cursor: 'pointer', borderRadius: '5px' }}>{label}</button>; })}
               </div>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px', borderTop: `1px solid ${BORDER}` }}>
-              <select value={w.status || 'Active'} onChange={e => updW(proj.id, w.id, 'status', e.target.value)} style={{ fontSize: '12px', fontFamily: 'monospace', padding: '6px 12px', border: `1px solid ${st.border}`, background: st.bg, color: st.color, outline: 'none', cursor: 'pointer', borderRadius: '6px' }}>
+              <select value={w.status || 'Active'} onChange={e => { e.stopPropagation(); updW(proj.id, w.id, 'status', e.target.value); }} style={{ fontSize: '12px', fontFamily: 'monospace', padding: '6px 12px', border: `1px solid ${st.border}`, background: st.bg, color: st.color, outline: 'none', cursor: 'pointer', borderRadius: '6px' }}>
                 {STATUS_OPTIONS.map(s => <option key={s} style={{ background: '#1a1a1a', color: '#fff' }}>{s}</option>)}
               </select>
-              <button onClick={() => delWallet(proj.id, w.id)} style={{ background: 'none', border: `1px solid rgba(252,129,129,0.2)`, color: RED, cursor: 'pointer', fontSize: '11px', fontFamily: 'monospace', padding: '6px 14px', borderRadius: '6px' }}>Delete</button>
+              <button onClick={e => { e.stopPropagation(); delWallet(proj.id, w.id); }} style={{ background: 'none', border: `1px solid rgba(252,129,129,0.2)`, color: RED, cursor: 'pointer', fontSize: '11px', fontFamily: 'monospace', padding: '6px 14px', borderRadius: '6px' }}>Delete</button>
             </div>
           </div>
         )}
@@ -293,7 +290,7 @@ export default function Dashboard({ onReset }) {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: BG, color: '#fff', position: 'relative' }}>
+    <div style={{ minHeight: '100vh', background: BG, color: '#fff', position: 'relative', overflowX: 'hidden' }}>
       <div style={{ position: 'fixed', top: 0, left: '50%', transform: 'translateX(-50%)', width: '800px', height: '300px', background: 'radial-gradient(ellipse, rgba(180,80,20,0.12) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
 
       <nav style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: isMobile ? '12px 16px' : '16px 28px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(8,8,8,0.8)' }}>
@@ -308,21 +305,17 @@ export default function Dashboard({ onReset }) {
           </svg>
           <span style={{ fontWeight: 800, fontSize: isMobile ? '14px' : '15px', color: '#fff', letterSpacing: '0.02em' }}>Rekto<span style={{ color: AMBER }}>Meter</span></span>
         </button>
-        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontFamily: 'monospace', color: GREEN }}>
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: GREEN, display: 'inline-block' }}></span>
             {!isMobile && 'Pyth live'}
           </div>
-          <button onClick={() => { setTourStep(0); setShowTour(true); }}
-  style={{ fontSize: '11px', fontFamily: 'monospace', color: AMBER, background: 'rgba(246,173,85,0.08)', border: `1px solid rgba(246,173,85,0.25)`, padding: '5px 12px', borderRadius: '7px', cursor: 'pointer' }}>
-  ? Guide
-</button>
-<button onClick={onReset} style={{ fontSize: '11px', fontFamily: 'monospace', color: MUTED, background: 'rgba(255,255,255,0.05)', border: `1px solid ${BORDER}`, padding: '5px 12px', borderRadius: '7px', cursor: 'pointer' }}>Reset</button>
+          <button onClick={() => { setTourStep(0); setShowTour(true); }} style={{ fontSize: '11px', fontFamily: 'monospace', color: AMBER, background: 'rgba(246,173,85,0.08)', border: `1px solid rgba(246,173,85,0.25)`, padding: '5px 12px', borderRadius: '7px', cursor: 'pointer' }}>? Guide</button>
+          <button onClick={onReset} style={{ fontSize: '11px', fontFamily: 'monospace', color: MUTED, background: 'rgba(255,255,255,0.05)', border: `1px solid ${BORDER}`, padding: '5px 12px', borderRadius: '7px', cursor: 'pointer' }}>Reset</button>
         </div>
       </nav>
 
       <div style={{ position: 'relative', zIndex: 1, padding: isMobile ? '16px' : '24px 28px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '10px' }}>
           {[
             { label: 'Holdings', val: '$' + fmt(grand.modalNow),   sub: (grand.unrealized >= 0 ? '+' : '-') + '$' + fmt(Math.abs(grand.unrealized)) + ' unrlzd', accent: grand.unrealized >= 0 ? GREEN : RED },
@@ -351,7 +344,8 @@ export default function Dashboard({ onReset }) {
           const pc = calcP(proj);
           return (
             <div key={proj.id} style={{ background: BG2, border: `1px solid ${BORDER}`, borderRadius: '12px', overflow: 'hidden' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: isMobile ? '12px 14px' : '14px 18px', borderBottom: proj.open ? `1px solid ${BORDER}` : 'none', cursor: 'pointer', background: BG3 }} onClick={() => updP(proj.id, 'open', !proj.open)}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: isMobile ? '12px 14px' : '14px 18px', borderBottom: proj.open ? `1px solid ${BORDER}` : 'none', cursor: 'pointer', background: BG3 }}
+                onClick={() => updP(proj.id, 'open', !proj.open)}>
                 <span style={{ fontSize: '10px', color: DIM, fontFamily: 'monospace' }}>{proj.open ? '▼' : '▶'}</span>
                 <input value={proj.name} onChange={e => { e.stopPropagation(); updP(proj.id, 'name', e.target.value); }} onClick={e => e.stopPropagation()} placeholder="Project name..." data-tour="project-name"
                   style={{ background: 'none', border: 'none', outline: 'none', fontWeight: 700, fontSize: isMobile ? '13px' : '14px', color: '#fff', width: isMobile ? '120px' : '180px' }} />
@@ -367,7 +361,7 @@ export default function Dashboard({ onReset }) {
                       <span style={{ color: DIM }}>Net P&L <span style={{ color: pc.totalNetPnl >= 0 ? GREEN : RED, fontWeight: 700 }}>{pc.totalNetPnl >= 0 ? '+' : '-'}${fmt(Math.abs(pc.totalNetPnl))}</span></span>
                     </>
                   )}
-                  <button onClick={e => { e.stopPropagation(); delWallet(proj.id, w.id); }} style={{ background: 'none', border: 'none', color: DIM, cursor: 'pointer', fontSize: '14px' }} onMouseEnter={e => e.target.style.color = RED} onMouseLeave={e => e.target.style.color = DIM}>✕</button>
+                  <button onClick={e => { e.stopPropagation(); delProject(proj.id); }} style={{ background: 'none', border: 'none', color: DIM, cursor: 'pointer', fontSize: '14px', padding: '4px 8px' }} onMouseEnter={e => e.target.style.color = RED} onMouseLeave={e => e.target.style.color = DIM}>✕</button>
                 </div>
               </div>
 
@@ -375,7 +369,7 @@ export default function Dashboard({ onReset }) {
                 isMobile ? (
                   <div style={{ padding: '12px' }}>
                     {proj.wallets.map((w, wIndex) => <MobileWalletCard key={w.id} w={w} proj={proj} wIndex={wIndex} />)}
-                    <button onClick={() => addWallet(proj.id)} data-tour="add-wallet"
+                    <button onClick={e => { e.stopPropagation(); addWallet(proj.id); }} data-tour="add-wallet"
                       style={{ width: '100%', fontSize: '12px', fontFamily: 'monospace', color: DIM, background: 'none', border: `1px dashed rgba(246,173,85,0.2)`, padding: '10px', borderRadius: '8px', cursor: 'pointer', marginTop: '4px' }}>
                       + Add wallet
                     </button>
@@ -392,8 +386,8 @@ export default function Dashboard({ onReset }) {
                       </thead>
                       <tbody>
                         {proj.wallets.map((w, wIndex) => {
-                          const wc       = calcW(w);
-                          const ss       = searchState[w.id] || { text: w.assetSymbol ? `${w.assetSymbol}/USD` : '', show: false };
+                          const wc = calcW(w);
+                          const ss = searchState[w.id] || { text: w.assetSymbol ? `${w.assetSymbol}/USD` : '', show: false };
                           const filtered = allFeeds.filter(f => f.symbol.toLowerCase().includes((ss.text || '').toLowerCase().replace('/usd', ''))).slice(0, 15);
                           const expenses = w.expenses || [];
                           const incomes  = w.incomes  || [];
@@ -464,7 +458,7 @@ export default function Dashboard({ onReset }) {
                                   </select>
                                 </td>
                                 <td style={{ padding: '14px' }}>
-                                  <button onClick={() => delWallet(proj.id, w.id)} style={{ background: 'none', border: 'none', color: DIM, cursor: 'pointer', fontSize: '14px' }} onMouseEnter={e => e.target.style.color = RED} onMouseLeave={e => e.target.style.color = DIM}>✕</button>
+                                  <button onClick={() => delWallet(proj.id, w.id)} style={{ background: 'none', border: 'none', color: DIM, cursor: 'pointer', fontSize: '14px', padding: '4px 8px' }} onMouseEnter={e => e.target.style.color = RED} onMouseLeave={e => e.target.style.color = DIM}>✕</button>
                                 </td>
                               </tr>
                               {w.showExpenses && expenses.map(exp => (
@@ -516,7 +510,16 @@ export default function Dashboard({ onReset }) {
         </button>
       </div>
 
-      {showTour && <Tour steps={TOUR_STEPS} currentStep={tourStep} onNext={handleTourNext} onBack={handleTourBack} onSkip={handleTourSkip} onDone={handleTourSkip} />}
+      {showTour && (
+        <Tour
+          steps={TOUR_STEPS}
+          currentStep={tourStep}
+          onNext={() => tourStep < TOUR_STEPS.length - 1 && setTourStep(s => s + 1)}
+          onBack={() => setTourStep(s => Math.max(0, s - 1))}
+          onSkip={closeTour}
+          onDone={closeTour}
+        />
+      )}
     </div>
   );
 }
