@@ -90,13 +90,11 @@ export default function Dashboard({ onReset }) {
   const [tourStep, setTourStep]             = useState(0);
   const isMobile = useIsMobile();
 
-  const handleTourNext = (dir = 1) => {
-    const next = tourStep + dir;
-    if (next >= TOUR_STEPS.length) { localStorage.setItem('rektometer_tour_done', 'true'); setShowTour(false); }
-    else if (next < 0) setTourStep(0);
-    else setTourStep(next);
+  const handleTourNext = () => {
+    if (tourStep === TOUR_STEPS.length - 1) { localStorage.setItem('rektometer_tour_done', 'true'); setShowTour(false); }
+    else setTourStep(s => s + 1);
   };
-  const handleTourSkip = () => { localStorage.setItem('rektometer_tour_done', 'true'); setShowTour(false); };
+  const handleTourBack = () => setTourStep(s => Math.max(0, s - 1));
 
   useEffect(() => { localStorage.setItem('rektometer_v3', JSON.stringify(projects)); }, [projects]);
 
@@ -369,7 +367,7 @@ export default function Dashboard({ onReset }) {
                       <span style={{ color: DIM }}>Net P&L <span style={{ color: pc.totalNetPnl >= 0 ? GREEN : RED, fontWeight: 700 }}>{pc.totalNetPnl >= 0 ? '+' : '-'}${fmt(Math.abs(pc.totalNetPnl))}</span></span>
                     </>
                   )}
-                  <button onClick={e => { e.stopPropagation(); delProject(proj.id); }} style={{ background: 'none', border: 'none', color: DIM, cursor: 'pointer', fontSize: '14px' }} onMouseEnter={e => e.target.style.color = RED} onMouseLeave={e => e.target.style.color = DIM}>✕</button>
+                  <button onClick={e => { e.stopPropagation(); delWallet(proj.id, w.id); }} style={{ background: 'none', border: 'none', color: DIM, cursor: 'pointer', fontSize: '14px' }} onMouseEnter={e => e.target.style.color = RED} onMouseLeave={e => e.target.style.color = DIM}>✕</button>
                 </div>
               </div>
 
@@ -518,7 +516,7 @@ export default function Dashboard({ onReset }) {
         </button>
       </div>
 
-      {showTour && <Tour steps={TOUR_STEPS} currentStep={tourStep} onNext={handleTourNext} onSkip={handleTourSkip} onDone={handleTourSkip} />}
+      {showTour && <Tour steps={TOUR_STEPS} currentStep={tourStep} onNext={handleTourNext} onBack={handleTourBack} onSkip={handleTourSkip} onDone={handleTourSkip} />}
     </div>
   );
 }
