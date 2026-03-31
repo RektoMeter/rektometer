@@ -157,7 +157,5 @@ Licensed under the [Apache License 2.0](./LICENSE).
 ## 🔗 Links
 
 - 🌐 Live App: https://rektometer.click/
-- 📝 Dev.to Article: *(coming soon)*
-- 🏆 Hackathon: [Pyth Community Hackathon 2026](https://dev-forum.pyth.network/c/pyth-hackathon/14)
-
+- 📝 Dev.to Article: https://dev.to/ranimth0707/rektometer-your-airdrop-journal-powered-by-pyth-price-feeds-21hi
 ---
