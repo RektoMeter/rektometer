@@ -143,8 +143,8 @@ New to RektoMeter? Check out the built-in **Guide** page (click "Learn More" on 
 
 | Name | Role | GitHub |
 |------|------|--------|
-| Balya Aulia Assiddiqi | Product & Frontend | [@stircrazy](https://github.com/stircrazy) |
-| Rani | Design & Content | [@Ranimth07](https://github.com/Ranimth07) |
+| Balya Aulia Assiddiqi | Engineering & Product — frontend development, Pyth integration, architecture | [@stircrazy](https://github.com/stircrazy) |
+| Rani | Product & Design — UX research, feature definition, UI direction, content strategy & documentation | [@Ranimth07](https://github.com/Ranimth07) |
 
 ---
 
