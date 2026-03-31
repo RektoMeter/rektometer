@@ -4,24 +4,19 @@
 
 RektoMeter is a smart airdrop portfolio tracker built for crypto airdrop hunters who want to know their **real P&L** — not just what they earned, but what they actually spent to get there.
 
-Built for the **Pyth Community Hackathon 2026** — targeting the **Best Educational Content** prize category.
-
 ---
 
 ## 🔴 Live Demo
 
-👉 [rektometer.vercel.app](https://rektometer.vercel.app) *(coming soon)*
+👉 https://rektometer.click/
 
 ---
 
 ## 🧠 The Problem
 
-Most airdrop hunters know what they earned — but not what they spent.
+Most airdrop hunters know what they earned  but not what they spent.
 
-Gas fees, bridge costs, and swap fees quietly eat into profits. Without tracking, a $2,800 airdrop *feels* like pure profit — but the reality might be $2,755 after $45 in operational costs.
-
-**RektoMeter fixes this.**
-
+Gas fees, bridge costs, and swap fees quietly eat into profits.
 ---
 
 ## ✨ Features
@@ -33,7 +28,7 @@ Gas fees, bridge costs, and swap fees quietly eat into profits. Without tracking
 
 ### 👛 Multi-Wallet Support
 - Add unlimited wallets per project
-- Paste your wallet address — RektoMeter **auto-detects EVM vs SVM**
+- Paste your wallet address | RektoMeter **auto-detects EVM vs SVM**
   - EVM: starts with `0x...`
   - SVM: Solana-style base58 address
 - Track performance independently per wallet
@@ -60,10 +55,10 @@ Gas fees, bridge costs, and swap fees quietly eat into profits. Without tracking
 ### 🏷️ Strategy Labels (Multi-select)
 | Label | Description |
 |-------|-------------|
-| **Retro** | Retroactive farming — no guaranteed reward |
-| **Invest** | Capital deployed — has unrealized value |
-| **Yapping** | Discord roles, social tasks — zero capital |
-| **Testnet** | Testnet activity — minimal cost |
+| **Retro** | Retroactive farming | no guaranteed reward |
+| **Invest** | Capital deployed | has unrealized value |
+| **Yapping** | Discord roles, social tasks | zero capital |
+| **Testnet** | Testnet activity | minimal cost |
 
 ### 📊 P&L Breakdown Per Wallet
 Each wallet shows a full breakdown:
@@ -161,11 +156,8 @@ Licensed under the [Apache License 2.0](./LICENSE).
 
 ## 🔗 Links
 
-- 🌐 Live App: [rektometer.vercel.app](https://rektometer.vercel.app)
+- 🌐 Live App: https://rektometer.click/
 - 📝 Dev.to Article: *(coming soon)*
-- 🐦 Twitter: *(coming soon)*
 - 🏆 Hackathon: [Pyth Community Hackathon 2026](https://dev-forum.pyth.network/c/pyth-hackathon/14)
 
 ---
-
-*Built with ❤️ for the Pyth Community Hackathon 2026*
