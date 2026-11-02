@@ -1,3 +1,8 @@
+import { Geist, Geist_Mono } from 'next/font/google';
+
+const geistSans = Geist({ subsets: ['latin'], variable: '--font-geist-sans' });
+const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' });
+
 export const metadata = {
   title: 'RektoMeter — Your Airdrop Journal',
   description: 'Track every airdrop project, wallet, and expense. Know your real P&L powered by Pyth Price Feeds.',
@@ -18,8 +23,8 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <body style={{ overflowX: 'hidden', margin: 0, padding: 0 }}>{children}</body>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body className={geistSans.className} style={{ overflowX: 'hidden', margin: 0, padding: 0, background: '#080808', WebkitFontSmoothing: 'antialiased' }}>{children}</body>
     </html>
   );
 }

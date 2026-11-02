@@ -1,146 +1,143 @@
 'use client';
+import Logo from './Logo';
+
+// Warm dark ramp, amber stays the one accent
+const C = {
+  bg:       '#12110f',
+  card:     '#1a1916',
+  raised:   '#24221e',
+  line:     'rgba(239,233,222,0.08)',
+  text:     '#efe9de',
+  text2:    '#aaa398',
+  muted:    '#8a847a',
+  amber:    '#f6ad55',
+  onAmber:  '#1f1408',
+  positive: '#4cc38a',
+  negative: '#e5484d',
+};
+
+const MONO = 'var(--font-geist-mono), ui-monospace, monospace';
+
+// Sample ledger for the preview, sums to the net figure shown
+const SAMPLE = [
+  { name: 'Linea',          type: 'L2', status: 'Done',    wallets: 3, net:  512.40 },
+  { name: 'Scroll',         type: 'L2', status: 'Done',    wallets: 2, net:  128.10 },
+  { name: 'MegaETH',        type: 'L2', status: 'Waiting', wallets: 3, net: -212.30 },
+  { name: 'pointsfarm.xyz', type: 'DeFi', status: 'Rugged', wallets: 1, net:  -86.30 },
+];
+
+const usd = (n) => `${n < 0 ? '−' : '+'}$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const FEATURES = ['Multi-wallet tracking', 'Live Pyth prices', 'Airdrop P&L', 'Expense logging'];
+
+function Preview() {
+  const net = SAMPLE.reduce((s, p) => s + p.net, 0);
+  return (
+    <div className="rk-preview" style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: '16px', padding: '24px', boxShadow: '0 24px 64px rgba(0,0,0,0.35)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <span style={{ fontSize: '13px', color: C.text2 }}>Net P&amp;L, all projects</span>
+        <span style={{ fontSize: '12px', color: C.muted, fontFamily: MONO }}>4 projects · 9 wallets</span>
+      </div>
+
+      <div style={{ fontSize: '40px', lineHeight: 1, fontWeight: 500, color: C.text, marginTop: '12px', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>
+        {usd(net)}
+      </div>
+      <div style={{ fontSize: '12px', color: C.muted, fontFamily: MONO, marginTop: '8px', fontVariantNumeric: 'tabular-nums' }}>
+        $1,180.00 airdrops + $36.00 income − $874.10 spent
+      </div>
+
+      {/* The meter: where you landed between rekt and paid off */}
+      <div style={{ marginTop: '24px' }}>
+        <div style={{ position: 'relative', height: '4px', borderRadius: '2px', background: C.raised }}>
+          <div style={{ position: 'absolute', left: '50%', top: '-4px', width: '1px', height: '12px', background: C.line }} />
+          <div style={{ position: 'absolute', left: '50%', width: '20%', height: '4px', background: C.amber, borderRadius: '0 2px 2px 0' }} />
+          <div style={{ position: 'absolute', left: 'calc(70% - 1px)', top: '-6px', width: '2px', height: '16px', borderRadius: '1px', background: C.amber }} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '12px', fontFamily: MONO, color: C.muted }}>
+          <span>rekt</span><span>break even</span><span>paid off</span>
+        </div>
+      </div>
+
+      <div style={{ marginTop: '24px', borderTop: `1px solid ${C.line}` }}>
+        {SAMPLE.map(p => (
+          <div key={p.name} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', alignItems: 'center', gap: '16px', height: '44px', borderBottom: `1px solid ${C.line}` }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', minWidth: 0 }}>
+              <span style={{ fontSize: '14px', color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</span>
+              <span style={{ fontSize: '12px', color: C.muted, fontFamily: MONO }}>{p.type} · {p.wallets}w</span>
+            </div>
+            <span style={{ fontSize: '12px', color: p.status === 'Rugged' ? C.negative : C.text2 }}>{p.status}</span>
+            <span style={{ fontSize: '14px', width: '88px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: p.net < 0 ? C.negative : C.positive }}>{usd(p.net)}</span>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ marginTop: '16px', fontSize: '12px', color: C.muted, fontFamily: MONO }}>
+        Prices from Pyth, refreshed every 15s
+      </div>
+    </div>
+  );
+}
 
 export default function Landing({ onNext, onGuide }) {
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#080808',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      textAlign: 'center',
-      padding: '0 24px',
-      position: 'relative',
-      overflow: 'hidden',
-    }}>
-
-      {/* Glow background */}
-      <div style={{
-        position: 'absolute',
-        top: '20%',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: '600px',
-        height: '400px',
-        background: 'radial-gradient(ellipse, rgba(180,80,20,0.25) 0%, transparent 70%)',
-        pointerEvents: 'none',
-      }} />
+    <div className="rk-landing" style={{ minHeight: '100vh', background: C.bg, color: C.text, display: 'flex', flexDirection: 'column' }}>
+      <style>{`
+        .rk-landing button { font-family: inherit; transition: background-color 150ms cubic-bezier(0.22,1,0.36,1), transform 150ms cubic-bezier(0.22,1,0.36,1); }
+        .rk-landing button:active { transform: scale(0.98); }
+        .rk-landing button:focus-visible { outline: 2px solid ${C.amber}; outline-offset: 2px; }
+        .rk-primary:hover { background: #f8bb6e !important; }
+        .rk-secondary:hover, .rk-nav-btn:hover { background: ${C.raised} !important; }
+        .rk-hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 64px; align-items: center; }
+        .rk-h1 { font-size: 64px; line-height: 1.04; letter-spacing: -0.03em; }
+        .rk-page { padding: 0 32px; }
+        @media (max-width: 900px) {
+          .rk-hero { grid-template-columns: 1fr; gap: 48px; }
+          .rk-h1 { font-size: 40px; letter-spacing: -0.02em; }
+          .rk-page { padding: 0 20px; }
+          .rk-features { flex-wrap: wrap; gap: 8px 24px !important; }
+        }
+      `}</style>
 
       {/* Nav */}
-      <nav style={{
-  position: 'absolute',
-  top: 0, left: 0, right: 0,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  padding: '20px 40px',
-}}>
-  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="32" height="32" rx="8" fill="url(#grad)"/>
-      <path d="M8 22 L8 10 L14 10 Q18 10 18 14 Q18 17 15 17.5 L19 22 L16 22 L12.5 17.8 L11 17.8 L11 22 Z" fill="white" opacity="0.95"/>
-      <path d="M11 10.5 L11 15.5 L14 15.5 Q16.5 15.5 16.5 13 Q16.5 10.5 14 10.5 Z" fill="white" opacity="0.95"/>
-      <path d="M20 18 L23 22 L26 18" stroke="#f6ad55" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <circle cx="23" cy="15" r="2" fill="#f6ad55"/>
-      <defs>
-        <linearGradient id="grad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#c05621"/>
-          <stop offset="100%" stopColor="#7b341e"/>
-        </linearGradient>
-      </defs>
-    </svg>
-    <span style={{ fontWeight: 800, fontSize: '15px', color: '#fff', letterSpacing: '0.02em' }}>
-      Rekto<span style={{ color: '#f6ad55' }}>Meter</span>
-    </span>
-  </div>
-  <button onClick={onNext} style={{
-    background: 'rgba(255,255,255,0.08)',
-    border: '1px solid rgba(255,255,255,0.12)',
-    color: '#fff',
-    fontSize: '12px',
-    padding: '8px 18px',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontWeight: 500,
-    letterSpacing: '0.03em',
-  }}>
-    Open App ↗
-  </button>
-</nav>
+      <nav className="rk-page" style={{ height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: '1200px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Logo size={28} />
+          <span style={{ fontWeight: 600, fontSize: '16px' }}>RektoMeter</span>
+        </div>
+        <button className="rk-nav-btn" onClick={onNext} style={{ height: '36px', padding: '0 16px', borderRadius: '8px', background: 'transparent', border: `1px solid ${C.line}`, color: C.text, fontSize: '14px', cursor: 'pointer' }}>
+          Open app
+        </button>
+      </nav>
 
       {/* Hero */}
-      <div style={{ position: 'relative', zIndex: 1, maxWidth: '680px' }}>
-
-        {/* Badge */}
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '8px',
-          background: 'rgba(246,173,85,0.1)',
-          border: '1px solid rgba(246,173,85,0.25)',
-          borderRadius: '999px',
-          padding: '5px 14px',
-          marginBottom: '32px',
-        }}>
-          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f6ad55', display: 'inline-block' }}></span>
-          <span style={{ fontSize: '11px', color: '#f6ad55', letterSpacing: '0.06em', fontWeight: 500 }}>Powered by Pyth Price Feeds</span>
-        </div>
-
-        {/* Headline */}
-        <h1 style={{ margin: '0 0 16px', lineHeight: 1.1 }}>
-          <span style={{ display: 'block', fontSize: 'clamp(2.8rem, 7vw, 5rem)', fontWeight: 900, color: '#fff', letterSpacing: '-0.02em' }}>
-            Track Every
-          </span>
-          <span style={{ display: 'block', fontSize: 'clamp(2.8rem, 7vw, 5rem)', fontWeight: 900, fontStyle: 'italic', color: '#f6ad55', letterSpacing: '-0.02em' }}>
-            Airdrop.
-          </span>
-          <span style={{ display: 'block', fontSize: 'clamp(2.8rem, 7vw, 5rem)', fontWeight: 900, color: '#fff', letterSpacing: '-0.02em' }}>
-            Know Your P&L
-          </span>
-        </h1>
-
-        <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.7, margin: '0 auto 40px', maxWidth: '480px' }}>
-          Your airdrop journal - track wallets, expenses, income, and real time holdings powered by Pyth Price Feeds.
-        </p>
-
-        {/* CTAs */}
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-          <button onClick={onNext} style={{
-            background: '#f6ad55',
-            color: '#1a0a00',
-            border: 'none',
-            padding: '13px 28px',
-            borderRadius: '10px',
-            fontSize: '13px',
-            fontWeight: 700,
-            cursor: 'pointer',
-            letterSpacing: '0.02em',
-          }}>
-            Start Tracking ↗
-          </button>
-          <button onClick={() => onGuide && onGuide()}
-  style={{
-    background: 'rgba(255,255,255,0.06)',
-    color: 'rgba(255,255,255,0.7)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    padding: '13px 28px',
-    borderRadius: '10px',
-    fontSize: '13px',
-    fontWeight: 500,
-    cursor: 'pointer',
-  }}>
-  Learn More
-</button>
-        </div>
-
-        {/* Features strip */}
-        <div style={{ display: 'flex', gap: '24px', justifyContent: 'center', marginTop: '48px' }}>
-          {['Multi-wallet tracking', 'Live Pyth prices', 'Airdrop P&L', 'Expense logging'].map(f => (
-            <div key={f} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.04em' }}>
-              <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#f6ad55', display: 'inline-block' }}></span>
-              {f}
+      <main className="rk-page" style={{ flex: 1, display: 'flex', alignItems: 'center', maxWidth: '1200px', width: '100%', margin: '0 auto', boxSizing: 'border-box', paddingTop: '48px', paddingBottom: '64px' }}>
+        <div className="rk-hero" style={{ width: '100%' }}>
+          <div>
+            <h1 className="rk-h1" style={{ margin: 0, fontWeight: 500, color: C.text }}>
+              Find out which airdrops actually paid off
+            </h1>
+            <p style={{ fontSize: '18px', lineHeight: '28px', color: C.text2, margin: '24px 0 0', maxWidth: '34rem' }}>
+              Log every project, wallet and fee you spend farming. RektoMeter nets it against what the airdrop paid, with live prices from Pyth.
+            </p>
+            <div style={{ display: 'flex', gap: '12px', marginTop: '40px', flexWrap: 'wrap' }}>
+              <button className="rk-primary" onClick={onNext} style={{ height: '48px', padding: '0 20px', borderRadius: '10px', background: C.amber, color: C.onAmber, border: 'none', fontSize: '15px', fontWeight: 500, cursor: 'pointer' }}>
+                Start tracking
+              </button>
+              <button className="rk-secondary" onClick={() => onGuide && onGuide()} style={{ height: '48px', padding: '0 20px', borderRadius: '10px', background: C.card, color: C.text, border: `1px solid ${C.line}`, fontSize: '15px', cursor: 'pointer' }}>
+                How it works
+              </button>
             </div>
+          </div>
+
+          <Preview />
+        </div>
+      </main>
+
+      {/* Features */}
+      <div className="rk-page" style={{ maxWidth: '1200px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+        <div className="rk-features" style={{ display: 'flex', gap: '40px', borderTop: `1px solid ${C.line}`, padding: '20px 0 24px' }}>
+          {FEATURES.map(f => (
+            <span key={f} style={{ fontSize: '13px', color: C.text2 }}>{f}</span>
           ))}
         </div>
       </div>
